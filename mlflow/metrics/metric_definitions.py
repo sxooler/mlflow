@@ -479,9 +479,9 @@ def _recall_at_k_eval_fn(k):
             # only include the top k retrieved chunks
             ground_truth, retrieved = set(target), set(prediction[:k])
             relevant_doc_count = len(ground_truth.intersection(retrieved))
-            if len(ground_truth) > 0:
+            if ground_truth:
                 scores.append(relevant_doc_count / len(ground_truth))
-            elif len(retrieved) == 0:
+            elif not retrieved:
                 # there are 0 retrieved and ground truth docs, so reward for the match
                 scores.append(1)
             else:

@@ -253,33 +253,32 @@ class FileStore(AbstractStore):
         registered_model = self._get_registered_model_from_path(model_path)
 
         new_meta_dir = self._get_registered_model_path(new_name)
-        if not exists(new_meta_dir):
-            mkdir(new_meta_dir)
-            updated_time = get_current_time_millis()
-            registered_model.name = new_name
-            registered_model.last_updated_timestamp = updated_time
-            self._save_registered_model_as_meta_file(
-                registered_model, meta_dir=new_meta_dir, overwrite=False
-            )
-            model_versions = self._list_file_model_versions_under_path(model_path)
-            for mv in model_versions:
-                mv.name = new_name
-                mv.last_updated_timestamp = updated_time
-                new_model_version_dir = join(new_meta_dir, f"version-{mv.version}")
-                mkdir(new_model_version_dir)
-                self._save_model_version_as_meta_file(
-                    mv, meta_dir=new_model_version_dir, overwrite=False
-                )
-                if mv.tags is not None:
-                    for tag in mv.tags:
-                        self.set_model_version_tag(new_name, mv.version, tag)
-            shutil.rmtree(model_path)
-        else:
+        if exists(new_meta_dir):
             raise MlflowException(
                 f"Registered Model (name={new_name}) already exists.",
                 RESOURCE_ALREADY_EXISTS,
             )
 
+        mkdir(new_meta_dir)
+        updated_time = get_current_time_millis()
+        registered_model.name = new_name
+        registered_model.last_updated_timestamp = updated_time
+        self._save_registered_model_as_meta_file(
+            registered_model, meta_dir=new_meta_dir, overwrite=False
+        )
+        model_versions = self._list_file_model_versions_under_path(model_path)
+        for mv in model_versions:
+            mv.name = new_name
+            mv.last_updated_timestamp = updated_time
+            new_model_version_dir = join(new_meta_dir, f"version-{mv.version}")
+            mkdir(new_model_version_dir)
+            self._save_model_version_as_meta_file(
+                mv, meta_dir=new_model_version_dir, overwrite=False
+            )
+            if mv.tags is not None:
+                for tag in mv.tags:
+                    self.set_model_version_tag(new_name, mv.version, tag)
+        shutil.rmtree(model_path)
         return registered_model
 
     def delete_registered_model(self, name):
@@ -313,10 +312,10 @@ class FileStore(AbstractStore):
 
     def _list_all_registered_models(self):
         registered_model_paths = self._get_all_registered_model_paths()
-        registered_models = []
-        for path in registered_model_paths:
-            registered_models.append(self._get_registered_model_from_path(path))
-        return registered_models
+        return [
+            self._get_registered_model_from_path(path)
+            for path in registered_model_paths
+        ]
 
     def search_registered_models(
         self, filter_string=None, max_results=None, order_by=None, page_token=None
@@ -450,19 +449,19 @@ class FileStore(AbstractStore):
 
     def get_all_registered_model_tags_from_path(self, model_path):
         parent_path, tag_files = self._get_resource_files(model_path, FileStore.TAGS_FOLDER_NAME)
-        tags = []
-        for tag_file in tag_files:
-            tags.append(self._get_registered_model_tag_from_file(parent_path, tag_file))
-        return tags
+        return [
+            self._get_registered_model_tag_from_file(parent_path, tag_file)
+            for tag_file in tag_files
+        ]
 
     def get_all_registered_model_aliases_from_path(self, model_path):
         parent_path, alias_files = self._get_resource_files(
             model_path, FileStore.REGISTERED_MODELS_ALIASES_FOLDER_NAME
         )
-        aliases = []
-        for alias_file in alias_files:
-            aliases.append(self._get_registered_model_alias_from_file(parent_path, alias_file))
-        return aliases
+        return [
+            self._get_registered_model_alias_from_file(parent_path, alias_file)
+            for alias_file in alias_files
+        ]
 
     def _writeable_value(self, tag_value):
         if tag_value is None:
@@ -510,10 +509,10 @@ class FileStore(AbstractStore):
 
     def _get_model_version_tags_from_dir(self, directory) -> List[ModelVersionTag]:
         parent_path, tag_files = self._get_resource_files(directory, FileStore.TAGS_FOLDER_NAME)
-        tags = []
-        for tag_file in tag_files:
-            tags.append(self._get_registered_model_version_tag_from_file(parent_path, tag_file))
-        return tags
+        return [
+            self._get_registered_model_version_tag_from_file(parent_path, tag_file)
+            for tag_file in tag_files
+        ]
 
     def _get_model_version_dir(self, name, version):
         registered_model_path = self._get_registered_model_path(name)
@@ -583,10 +582,7 @@ class FileStore(AbstractStore):
         def next_version(registered_model_name):
             path = self._get_registered_model_path(registered_model_name)
             model_versions = self._list_file_model_versions_under_path(path)
-            if model_versions:
-                return max(mv.version for mv in model_versions) + 1
-            else:
-                return 1
+            return max(mv.version for mv in model_versions) + 1 if model_versions else 1
 
         _validate_model_name(name)
         for tag in tags or []:
@@ -767,16 +763,16 @@ class FileStore(AbstractStore):
         return list_subdirs(join(self.root_directory, FileStore.MODELS_FOLDER_NAME), full_path=True)
 
     def _list_file_model_versions_under_path(self, path) -> List[FileModelVersion]:
-        model_versions = []
         model_version_dirs = list_all(
             path,
             filter_func=lambda x: os.path.isdir(x)
             and os.path.basename(os.path.normpath(x)).startswith("version-"),
             full_path=True,
         )
-        for directory in model_version_dirs:
-            model_versions.append(self._get_file_model_version_from_dir(directory))
-        return model_versions
+        return [
+            self._get_file_model_version_from_dir(directory)
+            for directory in model_version_dirs
+        ]
 
     def search_model_versions(
         self, filter_string=None, max_results=None, order_by=None, page_token=None
@@ -946,9 +942,8 @@ class FileStore(AbstractStore):
             result = read_yaml(root, file_name)
             if result is not None or attempts_remaining == 0:
                 return result
-            else:
-                time.sleep(0.1 * (3 - attempts_remaining))
-                return _read_helper(root, file_name, attempts_remaining - 1)
+            time.sleep(0.1 * (3 - attempts_remaining))
+            return _read_helper(root, file_name, attempts_remaining - 1)
 
         return _read_helper(root, file_name, attempts_remaining=retries)
 

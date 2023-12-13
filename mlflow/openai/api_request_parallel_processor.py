@@ -132,8 +132,7 @@ class APIRequest:
                         status_tracker.error = mlflow.MlflowException(
                             "Request failed after retrying for 10 minutes."
                         )
-                # Other retryable errors
-                elif response.status_code in [500, 503]:
+                elif response.status_code in {500, 503}:
                     _logger.debug(f"Request #{self.index} failed with {error!r}")
                     status_tracker.increment_num_api_errors()
                     if self.attempts_left > 0:
@@ -143,7 +142,6 @@ class APIRequest:
                         status_tracker.error = mlflow.MlflowException(
                             f"Request #{self.index} failed with {error!r}"
                         )
-                # Unretryable errors
                 else:
                     _logger.warning(f"Request #{self.index} failed with {error!r}")
                     status_tracker.increment_num_api_errors()
@@ -192,32 +190,29 @@ def num_tokens_consumed_from_request(
                         num_tokens -= 1  # role is always required and always 1 token
             num_tokens += 2  # every reply is primed with <im_start>assistant
             return num_tokens + completion_tokens
-        # normal completions
         else:
             prompt = request_json["prompt"]
             if isinstance(prompt, str):  # single prompt
                 prompt_tokens = len(encoding.encode(prompt))
                 return prompt_tokens + completion_tokens
             elif isinstance(prompt, list):  # multiple prompts
-                prompt_tokens = sum([len(encoding.encode(p)) for p in prompt])
+                prompt_tokens = sum(len(encoding.encode(p)) for p in prompt)
                 return prompt_tokens + completion_tokens * len(prompt)
             else:
                 raise TypeError(
                     "Expecting either string or list of strings for 'prompt' field in completion "
                     "request"
                 )
-    # if embeddings request, tokens = input tokens
     elif "embeddings" in request_url:
         inp = request_json["input"]
         if isinstance(inp, str):  # single input
             return len(encoding.encode(inp))
         elif isinstance(inp, list):  # multiple inputs
-            return sum([len(encoding.encode(i)) for i in inp])
+            return sum(len(encoding.encode(i)) for i in inp)
         else:
             raise TypeError(
                 'Expecting either string or list of strings for "inputs" field in embedding request'
             )
-    # more logic needed to support other API calls (e.g., edits, inserts, DALL-E)
     else:
         raise NotImplementedError(f'Support for "{request_url}" not implemented in this script')
 
@@ -311,14 +306,13 @@ def process_api_requests(
                         retry_queue=retry_queue,
                         status_tracker=status_tracker,
                     )
-                    next_request = None  # reset next_request to empty
                 else:
-                    next_request = None
                     status_tracker.complete_task(success=False)
                     status_tracker.error = mlflow.MlflowException(
                         "Request size exceeded max tokens."
                     )
 
+                next_request = None  # reset next_request to empty
             # if all tasks are finished, break
             if requests_exhausted and status_tracker.num_tasks_in_progress == 0:
                 break

@@ -157,7 +157,7 @@ class AzureBlobArtifactRepository(ArtifactRepository, MultipartUploadMixin):
         if path:
             dest_path = posixpath.join(dest_path, path)
         infos = []
-        prefix = dest_path if dest_path.endswith("/") else dest_path + "/"
+        prefix = dest_path if dest_path.endswith("/") else f"{dest_path}/"
         results = container_client.walk_blobs(name_starts_with=prefix)
 
         for result in results:

@@ -307,7 +307,6 @@ def _infer_signature_from_type_hints(func, input_arg_index, input_example=None):
         return None
 
     params = None
-    params_key = "params"
     if _contains_params(input_example):
         input_example, params = input_example
 
@@ -316,6 +315,7 @@ def _infer_signature_from_type_hints(func, input_arg_index, input_example=None):
     input_arg_name = _get_arg_names(func)[input_arg_index]
     if input_example:
         inputs = {input_arg_name: input_example}
+        params_key = "params"
         if params and params_key in inspect.signature(func).parameters:
             inputs[params_key] = params
         # This is for PythonModel's predict function
@@ -349,13 +349,13 @@ def _infer_signature_from_input_example(
             input_example, params = input_example
         else:
             params = None
-        if isinstance(input_example, list) and all(isinstance(x, str) for x in input_example):
-            input_schema = _infer_schema(input_example)
-        else:
+        if not isinstance(input_example, list) or not all(
+            isinstance(x, str) for x in input_example
+        ):
             input_example = _Example(input_example)
             # Copy the input example so that it is not mutated by predict()
             input_example = deepcopy(input_example.inference_data)
-            input_schema = _infer_schema(input_example)
+        input_schema = _infer_schema(input_example)
         params_schema = _infer_param_schema(params) if params else None
         prediction = wrapped_model.predict(input_example, params=params)
         # For column-based inputs, 1D numpy arrays likely signify row-based predictions. Thus, we

@@ -41,12 +41,11 @@ def _gen_xgboost_sklearn_estimators_to_patch():
 
     all_classes = inspect.getmembers(xgb.sklearn, inspect.isclass)
     base_class = xgb.sklearn.XGBModel
-    sklearn_estimators = []
-    for _, class_object in all_classes:
-        if issubclass(class_object, base_class) and class_object != base_class:
-            sklearn_estimators.append(class_object)
-
-    return sklearn_estimators
+    return [
+        class_object
+        for _, class_object in all_classes
+        if issubclass(class_object, base_class) and class_object != base_class
+    ]
 
 
 def _gen_lightgbm_sklearn_estimators_to_patch():
@@ -76,7 +75,7 @@ def _get_estimator_info_tags(estimator):
     """
     return {
         "estimator_name": estimator.__class__.__name__,
-        "estimator_class": (estimator.__class__.__module__ + "." + estimator.__class__.__name__),
+        "estimator_class": f"{estimator.__class__.__module__}.{estimator.__class__.__name__}",
     }
 
 
@@ -119,10 +118,7 @@ def _get_X_y_and_sample_weight(fit_func, fit_args, fit_kwargs):
             return args[sample_weight_index]
 
         # corresponds to: model.fit(X, y, ..., sample_weight=sample_weight)
-        if _SAMPLE_WEIGHT in kwargs:
-            return kwargs[_SAMPLE_WEIGHT]
-
-        return None
+        return kwargs[_SAMPLE_WEIGHT] if _SAMPLE_WEIGHT in kwargs else None
 
     fit_arg_names = _get_arg_names(fit_func)
     # In most cases, X_var_name and y_var_name become "X" and "y", respectively.
@@ -201,7 +197,7 @@ def _get_classifier_metrics(fitted_estimator, prefix, X, y_true, sample_weight, 
 
     classifier_metrics = [
         _SklearnMetric(
-            name=prefix + "precision_score",
+            name=f"{prefix}precision_score",
             function=sklearn.metrics.precision_score,
             arguments={
                 "y_true": y_true,
@@ -212,7 +208,7 @@ def _get_classifier_metrics(fitted_estimator, prefix, X, y_true, sample_weight, 
             },
         ),
         _SklearnMetric(
-            name=prefix + "recall_score",
+            name=f"{prefix}recall_score",
             function=sklearn.metrics.recall_score,
             arguments={
                 "y_true": y_true,
@@ -223,7 +219,7 @@ def _get_classifier_metrics(fitted_estimator, prefix, X, y_true, sample_weight, 
             },
         ),
         _SklearnMetric(
-            name=prefix + "f1_score",
+            name=f"{prefix}f1_score",
             function=sklearn.metrics.f1_score,
             arguments={
                 "y_true": y_true,
@@ -234,7 +230,7 @@ def _get_classifier_metrics(fitted_estimator, prefix, X, y_true, sample_weight, 
             },
         ),
         _SklearnMetric(
-            name=prefix + "accuracy_score",
+            name=f"{prefix}accuracy_score",
             function=sklearn.metrics.accuracy_score,
             arguments={
                 "y_true": y_true,
@@ -250,14 +246,14 @@ def _get_classifier_metrics(fitted_estimator, prefix, X, y_true, sample_weight, 
         classifier_metrics.extend(
             [
                 _SklearnMetric(
-                    name=prefix + "log_loss",
+                    name=f"{prefix}log_loss",
                     function=sklearn.metrics.log_loss,
                     arguments={
                         "y_true": y_true,
                         "y_pred": y_pred_proba,
                         "sample_weight": sample_weight,
                     },
-                ),
+                )
             ]
         )
 
@@ -270,7 +266,7 @@ def _get_classifier_metrics(fitted_estimator, prefix, X, y_true, sample_weight, 
             classifier_metrics.extend(
                 [
                     _SklearnMetric(
-                        name=prefix + "roc_auc",
+                        name=f"{prefix}roc_auc",
                         function=sklearn.metrics.roc_auc_score,
                         arguments={
                             "y_true": y_true,
@@ -279,7 +275,7 @@ def _get_classifier_metrics(fitted_estimator, prefix, X, y_true, sample_weight, 
                             "sample_weight": sample_weight,
                             "multi_class": "ovo",
                         },
-                    ),
+                    )
                 ]
             )
 
@@ -351,7 +347,7 @@ def _get_classifier_artifacts(fitted_estimator, prefix, X, y_true, sample_weight
     y_true_arg_name = "y" if is_plot_function_deprecated else "y_true"
     classifier_artifacts = [
         _SklearnArtifact(
-            name=prefix + "confusion_matrix",
+            name=f"{prefix}confusion_matrix",
             function=plot_confusion_matrix,
             arguments=dict(
                 estimator=fitted_estimator,
@@ -362,7 +358,7 @@ def _get_classifier_artifacts(fitted_estimator, prefix, X, y_true, sample_weight
                 **{y_true_arg_name: y_true},
             ),
             title="Normalized confusion matrix",
-        ),
+        )
     ]
 
     # The plot_roc_curve and plot_precision_recall_curve can only be
@@ -371,7 +367,7 @@ def _get_classifier_artifacts(fitted_estimator, prefix, X, y_true, sample_weight
         classifier_artifacts.extend(
             [
                 _SklearnArtifact(
-                    name=prefix + "roc_curve",
+                    name=f"{prefix}roc_curve",
                     function=sklearn.metrics.RocCurveDisplay.from_estimator
                     if is_plot_function_deprecated
                     else sklearn.metrics.plot_roc_curve,
@@ -384,7 +380,7 @@ def _get_classifier_artifacts(fitted_estimator, prefix, X, y_true, sample_weight
                     title="ROC curve",
                 ),
                 _SklearnArtifact(
-                    name=prefix + "precision_recall_curve",
+                    name=f"{prefix}precision_recall_curve",
                     function=sklearn.metrics.PrecisionRecallDisplay.from_estimator
                     if is_plot_function_deprecated
                     else sklearn.metrics.plot_precision_recall_curve,
@@ -433,7 +429,7 @@ def _get_regressor_metrics(fitted_estimator, prefix, X, y_true, sample_weight):
 
     regressor_metrics = [
         _SklearnMetric(
-            name=prefix + "mean_squared_error",
+            name=f"{prefix}mean_squared_error",
             function=sklearn.metrics.mean_squared_error,
             arguments={
                 "y_true": y_true,
@@ -443,7 +439,7 @@ def _get_regressor_metrics(fitted_estimator, prefix, X, y_true, sample_weight):
             },
         ),
         _SklearnMetric(
-            name=prefix + "mean_absolute_error",
+            name=f"{prefix}mean_absolute_error",
             function=sklearn.metrics.mean_absolute_error,
             arguments={
                 "y_true": y_true,
@@ -453,7 +449,7 @@ def _get_regressor_metrics(fitted_estimator, prefix, X, y_true, sample_weight):
             },
         ),
         _SklearnMetric(
-            name=prefix + "r2_score",
+            name=f"{prefix}r2_score",
             function=sklearn.metrics.r2_score,
             arguments={
                 "y_true": y_true,
@@ -468,8 +464,8 @@ def _get_regressor_metrics(fitted_estimator, prefix, X, y_true, sample_weight):
     # `sklearn.metrics.mean_squared_error` does not have "squared" parameter to calculate `rmse`,
     # we compute it through np.sqrt(<value of mse>)
     metrics_value_dict = _get_metrics_value_dict(regressor_metrics)
-    metrics_value_dict[prefix + "root_mean_squared_error"] = np.sqrt(
-        metrics_value_dict[prefix + "mean_squared_error"]
+    metrics_value_dict[f"{prefix}root_mean_squared_error"] = np.sqrt(
+        metrics_value_dict[f"{prefix}mean_squared_error"]
     )
 
     return metrics_value_dict
@@ -653,7 +649,7 @@ def _log_estimator_content(
             )
             _logger.warning(msg)
         else:
-            score_key = prefix + "score"
+            score_key = f"{prefix}score"
             autologging_client.log_metrics(run_id=run_id, metrics={score_key: score})
             metrics[score_key] = score
     _log_estimator_html(run_id, estimator)
@@ -798,7 +794,7 @@ def _create_child_runs_for_parameter_search(
 
     for _, result_row in cv_results_best_n_df.iterrows():
         tags_to_log = dict(child_tags) if child_tags else {}
-        tags_to_log.update({MLFLOW_PARENT_RUN_ID: parent_run.info.run_id})
+        tags_to_log[MLFLOW_PARENT_RUN_ID] = parent_run.info.run_id
         tags_to_log.update(_get_estimator_info_tags(seed_estimator))
         pending_child_run_id = autologging_client.create_run(
             experiment_id=parent_run.info.experiment_id,
@@ -909,9 +905,7 @@ def _backported_all_estimators(type_filter=None):
     def is_abstract(c):
         if not hasattr(c, "__abstractmethods__"):
             return False
-        if not len(c.__abstractmethods__):
-            return False
-        return True
+        return bool(len(c.__abstractmethods__))
 
     all_classes = []
     modules_to_ignore = {"tests", "externals", "setup", "conftest"}

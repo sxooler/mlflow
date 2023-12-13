@@ -61,7 +61,10 @@ def get_deploy_client(target_uri=None):
     plugin = plugin_store[target]
     for _, obj in inspect.getmembers(plugin):
         if inspect.isclass(obj):
-            if issubclass(obj, BaseDeploymentClient) and not obj == BaseDeploymentClient:
+            if (
+                issubclass(obj, BaseDeploymentClient)
+                and obj != BaseDeploymentClient
+            ):
                 return obj(target_uri)
 
 

@@ -148,7 +148,7 @@ class DatabricksModelsArtifactRepository(ArtifactRepository):
             parallel_download_subproc_env.update(
                 get_databricks_env_vars(self.databricks_profile_uri)
             )
-            failed_downloads = parallelized_download_file_using_http_uri(
+            if failed_downloads := parallelized_download_file_using_http_uri(
                 thread_pool_executor=self.chunk_thread_pool,
                 http_uri=signed_uri,
                 download_path=dst_local_file_path,
@@ -159,8 +159,7 @@ class DatabricksModelsArtifactRepository(ArtifactRepository):
                 chunk_size=MLFLOW_MULTIPART_DOWNLOAD_CHUNK_SIZE.get(),
                 env=parallel_download_subproc_env,
                 headers=headers,
-            )
-            if failed_downloads:
+            ):
                 new_signed_uri, new_headers = self._get_signed_download_uri(
                     dst_run_relative_artifact_path
                 )

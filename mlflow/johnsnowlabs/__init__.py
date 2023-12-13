@@ -791,8 +791,6 @@ def _get_or_create_sparksession(model_path=None):
 
     spark = _get_active_spark_session()
     if spark is None:
-        spark_conf = {}
-        spark_conf["spark.python.worker.reuse"] = "true"
         os.environ["PYSPARK_PYTHON"] = sys.executable
         os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
         if model_path:
@@ -806,6 +804,7 @@ def _get_or_create_sparksession(model_path=None):
                     )
                     os.environ["JSL_NLP_LICENSE"] = loaded_license["HC_LICENSE"]
             _logger.info("Starting a new Session with Jars: %s", jar_paths)
+            spark_conf = {"spark.python.worker.reuse": "true"}
             spark = nlp.start(
                 nlp=False,
                 spark_nlp=False,

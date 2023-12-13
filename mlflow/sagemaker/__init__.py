@@ -149,10 +149,7 @@ def push_image_to_ecr(image=DEFAULT_IMAGE_NAME):
         f"{account}.dkr.ecr.{region}.amazonaws.com"
     )
 
-    os_command_separator = ";\n"
-    if platform.system() == "Windows":
-        os_command_separator = " && "
-
+    os_command_separator = " && " if platform.system() == "Windows" else ";\n"
     docker_tag_cmd = f"docker tag {image} {fullname}"
     docker_push_cmd = f"docker push {fullname}"
 
@@ -1323,13 +1320,13 @@ def _get_deployment_config(flavor_name, env_override=None):
         deployment_config.update(env_override)
 
     if os.getenv("http_proxy") is not None:
-        deployment_config.update({"http_proxy": os.environ["http_proxy"]})
+        deployment_config["http_proxy"] = os.environ["http_proxy"]
 
     if os.getenv("https_proxy") is not None:
-        deployment_config.update({"https_proxy": os.environ["https_proxy"]})
+        deployment_config["https_proxy"] = os.environ["https_proxy"]
 
     if os.getenv("no_proxy") is not None:
-        deployment_config.update({"no_proxy": os.environ["no_proxy"]})
+        deployment_config["no_proxy"] = os.environ["no_proxy"]
 
     return deployment_config
 
@@ -1997,7 +1994,7 @@ class SageMakerDeploymentClient(BaseDeploymentClient):
             )
 
     def _default_deployment_config(self, create_mode=True):
-        config = {
+        return {
             "assume_role_arn": self.assumed_role_arn,
             "execution_role_arn": None,
             "bucket": None,
@@ -2015,14 +2012,10 @@ class SageMakerDeploymentClient(BaseDeploymentClient):
             "tags": None,
             "async_inference_config": {},
             "serverless_config": {},
+            "mode": DEPLOYMENT_MODE_CREATE
+            if create_mode
+            else DEPLOYMENT_MODE_REPLACE,
         }
-
-        if create_mode:
-            config["mode"] = DEPLOYMENT_MODE_CREATE
-        else:
-            config["mode"] = DEPLOYMENT_MODE_REPLACE
-
-        return config
 
     def _apply_custom_config(self, config, custom_config):
         int_fields = {"instance_count", "timeout_seconds"}

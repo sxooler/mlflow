@@ -57,11 +57,10 @@ class TensorDatasetSchema:
 
         schema_dict = schema_dict["mlflow_tensorspec"]
         features = Schema.from_json(schema_dict["features"])
-        if "targets" in schema_dict and schema_dict["targets"] is not None:
-            targets = Schema.from_json(schema_dict["targets"])
-            return cls(features, targets)
-        else:
+        if "targets" not in schema_dict or schema_dict["targets"] is None:
             return cls(features)
+        targets = Schema.from_json(schema_dict["targets"])
+        return cls(features, targets)
 
     def __eq__(self, other) -> bool:
         return (

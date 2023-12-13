@@ -1176,7 +1176,7 @@ class TrainStep(BaseStep):
                     else:
                         manual_log_params[param_name] = param_value
 
-                if len(manual_log_params) > 0:
+                if manual_log_params:
                     mlflow.log_params(manual_log_params)
 
                 # return +/- metric
@@ -1262,9 +1262,7 @@ class TrainStep(BaseStep):
             mlflow.log_params(estimator.get_params())
             estimator_tags = {
                 "estimator_name": estimator.__class__.__name__,
-                "estimator_class": (
-                    estimator.__class__.__module__ + "." + estimator.__class__.__name__
-                ),
+                "estimator_class": f"{estimator.__class__.__module__}.{estimator.__class__.__name__}",
             }
             mlflow.set_tags(estimator_tags)
         estimator_schema = infer_signature(
@@ -1313,12 +1311,9 @@ class TrainStep(BaseStep):
                 processed_data[key] = float(value)
             elif isinstance(value, np.integer):
                 processed_data[key] = int(value)
-            elif isinstance(value, dict):
-                processed_data[key] = str(value)
             else:
                 processed_data[key] = str(value)
-
-        if len(processed_data) > 0:
+        if processed_data:
             yaml.safe_dump(processed_data, file, **kwargs)
 
     def _rebalance_classes(self, train_df):

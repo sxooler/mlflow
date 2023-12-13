@@ -407,9 +407,7 @@ def _hash_array_like_obj_as_bytes(data):
                     return _hash_ndarray_as_bytes(v.toArray())
             if isinstance(v, np.ndarray):
                 return _hash_ndarray_as_bytes(v)
-            if isinstance(v, list):
-                return _hash_ndarray_as_bytes(np.array(v))
-            return v
+            return _hash_ndarray_as_bytes(np.array(v)) if isinstance(v, list) else v
 
         data = data.applymap(_hash_array_like_element_as_bytes)
         return _hash_uint64_ndarray_as_bytes(pd.util.hash_pandas_object(data))
@@ -837,13 +835,12 @@ def _start_run_or_reuse_active_run():
      - otherwise start a mflow run with the specified run_id,
        if specified run_id is None, start a new run.
     """
-    active_run = mlflow.active_run()
-    if not active_run:
+    if active_run := mlflow.active_run():
+        yield active_run.info.run_id
+    else:
         # Note `mlflow.start_run` throws if `run_id` is not found.
         with mlflow.start_run() as run:
             yield run.info.run_id
-    else:
-        yield active_run.info.run_id
 
 
 def _normalize_evaluators_and_evaluator_config_args(
@@ -1038,17 +1035,14 @@ def _validate(validation_thresholds, candidate_metrics, baseline_metrics=None):
                 relative_change < metric_threshold.min_relative_change
             )
 
-    failure_messages = []
-
-    for metric_validation_result in validation_results.values():
-        if metric_validation_result.is_success():
-            continue
-        failure_messages.append(str(metric_validation_result))
-
-    if not failure_messages:
+    if failure_messages := [
+        str(metric_validation_result)
+        for metric_validation_result in validation_results.values()
+        if not metric_validation_result.is_success()
+    ]:
+        raise ModelValidationFailedException(message=os.linesep.join(failure_messages))
+    else:
         return
-
-    raise ModelValidationFailedException(message=os.linesep.join(failure_messages))
 
 
 def _convert_data_to_mlflow_dataset(data, targets=None, predictions=None):
@@ -1133,7 +1127,7 @@ def _evaluate(
 
     _last_failed_evaluator = None
 
-    if len(eval_results) == 0:
+    if not eval_results:
         raise MlflowException(
             message="The model could not be evaluated by any of the registered evaluators, please "
             "verify that the model type and other configs are set correctly.",
@@ -1731,21 +1725,20 @@ def evaluate(
 
     if model_type in [_ModelType.REGRESSOR, _ModelType.CLASSIFIER]:
         if isinstance(data, Dataset):
-            if getattr(data, "targets", None) is not None:
-                targets = data.targets
-            else:
+            if getattr(data, "targets", None) is None:
                 raise MlflowException(
                     message="The targets column name must be specified in the provided Dataset "
                     f"for {model_type} models. For example: "
                     "`data = mlflow.data.from_pandas(df=X.assign(y=y), targets='y')`",
                     error_code=INVALID_PARAMETER_VALUE,
                 )
-        else:
-            if targets is None:
-                raise MlflowException(
-                    f"The targets argument must be specified for {model_type} models.",
-                    error_code=INVALID_PARAMETER_VALUE,
-                )
+            else:
+                targets = data.targets
+        elif targets is None:
+            raise MlflowException(
+                f"The targets argument must be specified for {model_type} models.",
+                error_code=INVALID_PARAMETER_VALUE,
+            )
     elif model_type is None:
         if not extra_metrics:
             raise MlflowException(
@@ -1771,7 +1764,6 @@ def evaluate(
                 "the desired configuration there.",
                 error_code=INVALID_PARAMETER_VALUE,
             )
-        pass
     elif model is None:
         # Evaluating a static dataset
         if isinstance(data, pd.DataFrame):

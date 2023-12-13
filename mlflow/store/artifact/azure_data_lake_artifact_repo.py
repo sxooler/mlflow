@@ -154,12 +154,11 @@ class AzureDataLakeArtifactRepository(CloudArtifactRepository):
         try:
             func(**kwargs)
         except requests.HTTPError as e:
-            if e.response.status_code in [403]:
-                new_credentials = self._get_write_credential_infos([artifact_file_path])[0]
-                kwargs["sas_url"] = new_credentials.signed_uri
-                func(**kwargs)
-            else:
+            if e.response.status_code not in [403]:
                 raise e
+            new_credentials = self._get_write_credential_infos([artifact_file_path])[0]
+            kwargs["sas_url"] = new_credentials.signed_uri
+            func(**kwargs)
 
     def _multipart_upload(self, credentials, src_file_path, artifact_file_path):
         """

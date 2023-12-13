@@ -158,11 +158,7 @@ def _serve_pyfunc(model, env_manager):
             bash_cmds.append("source /opt/activate")
     procs = []
 
-    start_nginx = True
-    if disable_nginx or enable_mlserver:
-        start_nginx = False
-
-    if start_nginx:
+    if start_nginx := not disable_nginx and not enable_mlserver:
         nginx_conf = Path(mlflow.models.__file__).parent.joinpath(
             "container", "scoring_server", "nginx.conf"
         )
@@ -217,11 +213,13 @@ def _serve_pyfunc(model, env_manager):
 
 
 def _read_registered_model_meta(model_path):
-    model_meta = {}
-    if os.path.isfile(os.path.join(model_path, REGISTERED_MODEL_META_FILE_NAME)):
-        model_meta = read_yaml(model_path, REGISTERED_MODEL_META_FILE_NAME)
-
-    return model_meta
+    return (
+        read_yaml(model_path, REGISTERED_MODEL_META_FILE_NAME)
+        if os.path.isfile(
+            os.path.join(model_path, REGISTERED_MODEL_META_FILE_NAME)
+        )
+        else {}
+    )
 
 
 def _serve_mleap():

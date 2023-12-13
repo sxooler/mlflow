@@ -83,7 +83,7 @@ class IterativePrune:
     def write_prune_summary(summary, params):
         with tempfile.TemporaryDirectory() as tempdir:
             summary_file = os.path.join(tempdir, "pruned_model_summary.txt")
-            params = "Total Trainable Parameters :" + str(params)
+            params = f"Total Trainable Parameters :{str(params)}"
             with open(summary_file, "w") as f:
                 f.write(str(summary))
                 f.write("\n")
@@ -104,8 +104,7 @@ class IterativePrune:
         self.write_prune_summary(summary, params)
         trainer = self.run_mnist_model()
         metrics = trainer.callback_metrics
-        test_accuracy = metrics.get("avg_test_acc")
-        return test_accuracy
+        return metrics.get("avg_test_acc")
 
     def initiate_pruning_process(self, model):
         total_trials = int(vars(self.parser_args)["total_trials"])
@@ -116,7 +115,7 @@ class IterativePrune:
             print("***************************************************************************")
             print(f"Running Trial {i + 1}")
             print("***************************************************************************")
-            with mlflow.start_run(nested=True, run_name="Iteration" + str(i)):
+            with mlflow.start_run(nested=True, run_name=f"Iteration{str(i)}"):
                 mlflow.set_tags({"AX_TRIAL": i})
 
                 # calling the model

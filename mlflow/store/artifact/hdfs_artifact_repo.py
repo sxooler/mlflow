@@ -181,7 +181,7 @@ def hdfs_system(scheme, host, port):
     kerberos_user = MLFLOW_KERBEROS_USER.get()
     extra_conf = _parse_extra_conf(MLFLOW_PYARROW_EXTRA_CONF.get())
 
-    host = scheme + "://" + host if host else "default"
+    host = f"{scheme}://{host}" if host else "default"
 
     if packaging.version.parse(pyarrow.__version__) < packaging.version.parse("2.0.0"):
         connected = pyarrow.fs.HadoopFileSystem(
@@ -212,9 +212,7 @@ def _resolve_connection_params(artifact_uri):
 def _resolve_base_path(path, artifact_path):
     if path == artifact_path:
         return path
-    if artifact_path:
-        return posixpath.join(path, artifact_path)
-    return path
+    return posixpath.join(path, artifact_path) if artifact_path else path
 
 
 def _relative_path(base_dir, subdir_path, path_module):

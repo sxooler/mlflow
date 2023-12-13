@@ -365,7 +365,7 @@ def _save_runnables(model, path, loader_fn=None, persist_dir=None):
         raise MlflowException.invalid_parameter_value(
             _UNSUPPORTED_MODEL_ERROR_MESSAGE.format(instance_type=type(model).__name__)
         )
-    model_data_kwargs.update({_MODEL_DATA_KEY: model_data_path})
+    model_data_kwargs[_MODEL_DATA_KEY] = model_data_path
     return model_data_kwargs
 
 

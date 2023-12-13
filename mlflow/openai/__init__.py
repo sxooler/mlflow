@@ -269,17 +269,15 @@ def _parse_format_fields(s) -> Set[str]:
 
 
 def _get_input_schema(task, content):
-    if content:
-        formatter = _ContentFormatter(task, content)
-        variables = formatter.variables
-        if len(variables) == 1:
-            return Schema([ColSpec(type="string")])
-        elif len(variables) > 1:
-            return Schema([ColSpec(name=v, type="string") for v in variables])
-        else:
-            return Schema([ColSpec(type="string")])
-    else:
+    if not content:
         return Schema([ColSpec(type="string")])
+    formatter = _ContentFormatter(task, content)
+    variables = formatter.variables
+    return (
+        Schema([ColSpec(type="string")])
+        if len(variables) == 1 or len(variables) <= 1
+        else Schema([ColSpec(name=v, type="string") for v in variables])
+    )
 
 
 @experimental
@@ -725,29 +723,26 @@ class _OpenAIWrapper:
         return [self.formater.format(**params) for params in params_list]
 
     def get_params_list(self, data):
-        if len(self.formater.variables) == 1:
-            variable = self.formater.variables[0]
-            if variable in data.columns:
-                return data[[variable]].to_dict(orient="records")
-            else:
-                first_string_column = _first_string_column(data)
-                return [{variable: s} for s in data[first_string_column]]
-        else:
+        if len(self.formater.variables) != 1:
             return data[self.formater.variables].to_dict(orient="records")
+        variable = self.formater.variables[0]
+        if variable in data.columns:
+            return data[[variable]].to_dict(orient="records")
+        first_string_column = _first_string_column(data)
+        return [{variable: s} for s in data[first_string_column]]
 
     def _construct_request_url(self, task_url, default_url):
         api_type = self.model.get("api_type") or self.envs.get("api_type")
-        if api_type in ("azure", "azure_ad", "azuread"):
-            api_base = self.envs.get("api_base")
-            api_version = self.envs.get("api_version")
-            deployment_id = self.envs.get("deployment_id")
-
-            return (
-                f"{api_base}/openai/deployments/{deployment_id}/"
-                f"{task_url}?api-version={api_version}"
-            )
-        else:
+        if api_type not in ("azure", "azure_ad", "azuread"):
             return default_url
+        api_base = self.envs.get("api_base")
+        api_version = self.envs.get("api_version")
+        deployment_id = self.envs.get("deployment_id")
+
+        return (
+            f"{api_base}/openai/deployments/{deployment_id}/"
+            f"{task_url}?api-version={api_version}"
+        )
 
     def _predict_chat(self, data, params):
         from mlflow.openai.api_request_parallel_processor import process_api_requests

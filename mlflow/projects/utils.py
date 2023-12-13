@@ -72,9 +72,7 @@ def _get_storage_dir(storage_dir):
 
 
 def _expand_uri(uri):
-    if _is_local_uri(uri):
-        return os.path.abspath(uri)
-    return uri
+    return os.path.abspath(uri) if _is_local_uri(uri) else uri
 
 
 def _is_file_uri(uri):
@@ -186,8 +184,7 @@ _HEAD_BRANCH_REGEX = re.compile(r"^\s*HEAD branch:\s+(?P<branch>\S+)")
 
 def _get_head_branch(remote_show_output):
     for line in remote_show_output.splitlines():
-        match = _HEAD_BRANCH_REGEX.match(line)
-        if match:
+        if match := _HEAD_BRANCH_REGEX.match(line):
             return match.group("branch")
 
 
@@ -203,7 +200,7 @@ def _fetch_git_repo(uri, version, dst_dir):
     import git
 
     repo = git.Repo.init(dst_dir)
-    origin = next((remote for remote in repo.remotes), None)
+    origin = next(iter(repo.remotes), None)
     if origin is None:
         origin = repo.create_remote("origin", uri)
     if version is not None:
@@ -320,11 +317,11 @@ def get_entry_point_command(project, entry_point, parameters, storage_dir):
         " type 'path' ===",
         storage_dir_for_run,
     )
-    commands = []
-    commands.append(
-        project.get_entry_point(entry_point).compute_command(parameters, storage_dir_for_run)
-    )
-    return commands
+    return [
+        project.get_entry_point(entry_point).compute_command(
+            parameters, storage_dir_for_run
+        )
+    ]
 
 
 def get_run_env_vars(run_id, experiment_id):

@@ -254,12 +254,11 @@ def _validate_server_args(gunicorn_opts=None, workers=None, waitress_opts=None):
                 "waitress replaces gunicorn on Windows, "
                 "cannot specify --gunicorn-opts or --workers"
             )
-    else:
-        if waitress_opts is not None:
-            raise NotImplementedError(
-                "gunicorn replaces waitress on non-Windows platforms, "
-                "cannot specify --waitress-opts"
-            )
+    elif waitress_opts is not None:
+        raise NotImplementedError(
+            "gunicorn replaces waitress on non-Windows platforms, "
+            "cannot specify --waitress-opts"
+        )
 
 
 def _validate_static_prefix(ctx, param, value):  # pylint: disable=unused-argument
@@ -653,28 +652,18 @@ cli.add_command(mlflow.db.commands)
 
 # We are conditional loading these commands since the skinny client does
 # not support them due to the pandas and numpy dependencies of MLflow Models
-try:
+with contextlib.suppress(ImportError):
     import mlflow.models.cli
 
     cli.add_command(mlflow.models.cli.commands)
-except ImportError:
-    pass
-
-try:
+with contextlib.suppress(ImportError):
     import mlflow.recipes.cli
 
     cli.add_command(mlflow.recipes.cli.commands)
-except ImportError:
-    pass
-
-try:
+with contextlib.suppress(ImportError):
     import mlflow.sagemaker.cli
 
     cli.add_command(mlflow.sagemaker.cli.commands)
-except ImportError:
-    pass
-
-
 with contextlib.suppress(ImportError):
     import mlflow.gateway.cli
 

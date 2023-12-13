@@ -27,12 +27,14 @@ def download_input():
     import requests
 
     url = "http://download.tensorflow.org/example_images/flower_photos.tgz"
-    print("downloading '{}' into '{}'".format(url, os.path.abspath("flower_photos.tgz")))
+    print(f"""downloading '{url}' into '{os.path.abspath("flower_photos.tgz")}'""")
     r = requests.get(url)
     with open("flower_photos.tgz", "wb") as f:
         f.write(r.content)
 
-    print("decompressing flower_photos.tgz to '{}'".format(os.path.abspath("flower_photos")))
+    print(
+        f"""decompressing flower_photos.tgz to '{os.path.abspath("flower_photos")}'"""
+    )
     with tarfile.open("flower_photos.tgz") as tar:
         tar.extractall(path="./")
 
@@ -110,7 +112,7 @@ class MLflowLogger(Callback):
         if not logs:
             return
         for name, value in logs.items():
-            name = "valid_" + name[4:] if name.startswith("val_") else "train_" + name
+            name = f"valid_{name[4:]}" if name.startswith("val_") else f"train_{name}"
             mlflow.log_metric(name, value)
         val_loss = logs["val_loss"]
         if val_loss < self._best_val_loss:

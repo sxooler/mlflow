@@ -90,6 +90,4 @@ def _is_valid_target(target: str):
     Evaluates the basic structure of a provided target to determine if the scheme and
     netloc are provided
     """
-    if target == "databricks":
-        return True
-    return _is_valid_uri(target)
+    return True if target == "databricks" else _is_valid_uri(target)

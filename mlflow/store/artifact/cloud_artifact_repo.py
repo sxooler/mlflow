@@ -152,7 +152,7 @@ class CloudArtifactRepository(ArtifactRepository):
                 except Exception as e:
                     failed_uploads[src_file_path] = repr(e)
 
-        if len(failed_uploads) > 0:
+        if failed_uploads:
             raise MlflowException(
                 message=(
                     "The following failures occurred while uploading one or more artifacts"
@@ -200,7 +200,7 @@ class CloudArtifactRepository(ArtifactRepository):
 
         with remove_on_error(local_path):
             parallel_download_subproc_env = os.environ.copy()
-            failed_downloads = parallelized_download_file_using_http_uri(
+            if failed_downloads := parallelized_download_file_using_http_uri(
                 thread_pool_executor=self.chunk_thread_pool,
                 http_uri=cloud_credential_info.signed_uri,
                 download_path=local_path,
@@ -209,10 +209,10 @@ class CloudArtifactRepository(ArtifactRepository):
                 uri_type=cloud_credential_info.type,
                 chunk_size=MLFLOW_MULTIPART_DOWNLOAD_CHUNK_SIZE.get(),
                 env=parallel_download_subproc_env,
-                headers=self._extract_headers_from_credentials(cloud_credential_info.headers),
-            )
-
-            if failed_downloads:
+                headers=self._extract_headers_from_credentials(
+                    cloud_credential_info.headers
+                ),
+            ):
                 new_cloud_creds = self._get_read_credential_infos([remote_file_path])[0]
                 new_signed_uri = new_cloud_creds.signed_uri
                 new_headers = self._extract_headers_from_credentials(new_cloud_creds.headers)

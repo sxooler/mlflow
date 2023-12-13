@@ -250,13 +250,13 @@ class AWSBedrockProvider(BaseProvider):
                 status_code=422,
                 detail=f"Unknown AWS Bedrock model type {self._underlying_provider}",
             )
-        adapter = provider.adapter
-        if not adapter:
+        if adapter := provider.adapter:
+            return adapter
+        else:
             raise HTTPException(
                 status_code=422,
                 detail=f"Don't know how to handle {self._underlying_provider} for AWS Bedrock",
             )
-        return adapter
 
     def _request(self, body):
         try:

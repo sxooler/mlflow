@@ -51,31 +51,30 @@ def _format_args_string(grading_context_columns: Optional[List[str]], eval_value
 
 # Function to extract Score and Justification
 def _extract_score_and_justification(text):
-    if text:
-        text = re.sub(r"score", "score", text, flags=re.IGNORECASE)
-        text = re.sub(r"justification", "justification", text, flags=re.IGNORECASE)
-        # Attempt to parse JSON
-        try:
-            data = json.loads(text)
-            score = int(data.get("score"))
-            justification = data.get("justification")
-        except json.JSONDecodeError:
-            # If parsing fails, use regex
-            if (match := re.search(r"score: (\d+),?\s*justification: (.+)", text)) or (
-                match := re.search(r"\s*score:\s*(\d+)\s*justification:\s*(.+)", text, re.DOTALL)
-            ):
-                score = int(match.group(1))
-                justification = match.group(2)
-            else:
-                score = None
-                justification = f"Failed to extract score and justification. Raw output: {text}"
+    if not text:
+        return None, None
+    text = re.sub(r"score", "score", text, flags=re.IGNORECASE)
+    text = re.sub(r"justification", "justification", text, flags=re.IGNORECASE)
+    # Attempt to parse JSON
+    try:
+        data = json.loads(text)
+        score = int(data.get("score"))
+        justification = data.get("justification")
+    except json.JSONDecodeError:
+        # If parsing fails, use regex
+        if (match := re.search(r"score: (\d+),?\s*justification: (.+)", text)) or (
+            match := re.search(r"\s*score:\s*(\d+)\s*justification:\s*(.+)", text, re.DOTALL)
+        ):
+            score = int(match.group(1))
+            justification = match.group(2)
+        else:
+            score = None
+            justification = f"Failed to extract score and justification. Raw output: {text}"
 
-        if not isinstance(score, (int, float)) or not isinstance(justification, str):
-            return None, f"Failed to extract score and justification. Raw output: {text}"
+    if not isinstance(score, (int, float)) or not isinstance(justification, str):
+        return None, f"Failed to extract score and justification. Raw output: {text}"
 
-        return score, justification
-
-    return None, None
+    return score, justification
 
 
 @experimental

@@ -7,13 +7,12 @@ from mlflow.tracking._tracking_service.utils import get_tracking_uri
 
 
 def _check_if_host_is_numeric(hostname):
-    if hostname:
-        try:
-            float(hostname)
-            return True
-        except ValueError:
-            return False
-    else:
+    if not hostname:
+        return False
+    try:
+        float(hostname)
+        return True
+    except ValueError:
         return False
 
 
