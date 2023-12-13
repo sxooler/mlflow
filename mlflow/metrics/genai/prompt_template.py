@@ -34,7 +34,7 @@ class PromptTemplate:
             fname for _, fname, _, _ in string.Formatter().parse(template_str) if fname
         ]
         if variables:
-            if not all(item in variables for item in extracted_variables):
+            if any(item not in variables for item in extracted_variables):
                 raise MlflowException(
                     f"The provided variables {variables} are not a subset of "
                     f"the extracted variables {extracted_variables} from the template string"

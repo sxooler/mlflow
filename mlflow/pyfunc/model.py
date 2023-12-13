@@ -384,14 +384,14 @@ def _load_pyfunc(model_path: str, model_config: Optional[Dict[str, Any]] = None)
     with open(os.path.join(model_path, python_model_subpath), "rb") as f:
         python_model = cloudpickle.load(f)
 
-    artifacts = {}
-    for saved_artifact_name, saved_artifact_info in pyfunc_config.get(
-        CONFIG_KEY_ARTIFACTS, {}
-    ).items():
-        artifacts[saved_artifact_name] = os.path.join(
+    artifacts = {
+        saved_artifact_name: os.path.join(
             model_path, saved_artifact_info[CONFIG_KEY_ARTIFACT_RELATIVE_PATH]
         )
-
+        for saved_artifact_name, saved_artifact_info in pyfunc_config.get(
+            CONFIG_KEY_ARTIFACTS, {}
+        ).items()
+    }
     context = PythonModelContext(artifacts=artifacts, model_config=model_config)
     python_model.load_context(context=context)
     signature = mlflow.models.Model.load(model_path).signature

@@ -92,8 +92,9 @@ class EvaluateStep(BaseStep):
         val_metrics = {vc["metric"] for vc in self.step_config.get("validation_criteria", [])}
         if not val_metrics:
             return
-        undefined_metrics = val_metrics.difference(self.evaluation_metrics.keys())
-        if undefined_metrics:
+        if undefined_metrics := val_metrics.difference(
+            self.evaluation_metrics.keys()
+        ):
             raise MlflowException(
                 f"Validation criteria contain undefined metrics: {sorted(undefined_metrics)}",
                 error_code=INVALID_PARAMETER_VALUE,

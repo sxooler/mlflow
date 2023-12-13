@@ -146,8 +146,7 @@ class S3ArtifactRepository(ArtifactRepository, MultipartUploadMixin):
 
     @staticmethod
     def get_s3_file_upload_extra_args():
-        s3_file_upload_extra_args = MLFLOW_S3_UPLOAD_EXTRA_ARGS.get()
-        if s3_file_upload_extra_args:
+        if s3_file_upload_extra_args := MLFLOW_S3_UPLOAD_EXTRA_ARGS.get():
             return json.loads(s3_file_upload_extra_args)
         else:
             return None
@@ -199,7 +198,7 @@ class S3ArtifactRepository(ArtifactRepository, MultipartUploadMixin):
         if path:
             dest_path = posixpath.join(dest_path, path)
         infos = []
-        prefix = dest_path + "/" if dest_path else ""
+        prefix = f"{dest_path}/" if dest_path else ""
         s3_client = self._get_s3_client()
         paginator = s3_client.get_paginator("list_objects_v2")
         results = paginator.paginate(Bucket=bucket, Prefix=prefix, Delimiter="/")

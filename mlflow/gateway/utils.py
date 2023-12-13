@@ -94,10 +94,14 @@ def _is_valid_uri(uri: str):
 
 
 def _get_indent(s: str) -> str:
-    for l in s.splitlines():
-        if l.startswith(" "):
-            return " " * (len(l) - len(l.lstrip()))
-    return ""
+    return next(
+        (
+            " " * (len(l) - len(l.lstrip()))
+            for l in s.splitlines()
+            if l.startswith(" ")
+        ),
+        "",
+    )
 
 
 def _prepend(docstring: Optional[str], text: str) -> str:
@@ -194,7 +198,7 @@ def assemble_uri_path(paths: List[str]) -> str:
     :return: A string representing the complete assembled URI path.
     """
     stripped_paths = [path.strip("/").lstrip("/") for path in paths if path]
-    return "/" + posixpath.join(*stripped_paths) if stripped_paths else "/"
+    return f"/{posixpath.join(*stripped_paths)}" if stripped_paths else "/"
 
 
 def resolve_route_url(base_url: str, route: str) -> str:

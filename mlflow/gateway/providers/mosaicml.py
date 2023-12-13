@@ -25,7 +25,7 @@ class MosaicMLProvider(BaseProvider):
             headers=headers,
             base_url=self.mosaicml_config.mosaicml_api_base
             or "https://models.hosted-on.mosaicml.hosting",
-            path=model + "/v1/predict",
+            path=f"{model}/v1/predict",
             payload=payload,
         )
 
@@ -46,7 +46,7 @@ class MosaicMLProvider(BaseProvider):
         """
         prompt = "<s>"  # Always start with an opening <s> tag
         for m in messages:
-            if m.role == "system" or m.role == "user":
+            if m.role in ["system", "user"]:
                 inst = m.content
 
                 # Wrap system messages in <<SYS>> tags

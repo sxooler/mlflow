@@ -223,15 +223,14 @@ class DatabricksArtifactRepository(CloudArtifactRepository):
         try:
             put_block(credentials.signed_uri, block_id, chunk, headers=headers)
         except requests.HTTPError as e:
-            if e.response.status_code in [401, 403]:
-                _logger.info(
-                    "Failed to authorize request, possibly due to credential expiration."
-                    " Refreshing credentials and trying again..."
-                )
-                credential_info = self._get_write_credential_infos([artifact_file_path])[0]
-                put_block(credential_info.signed_uri, block_id, chunk, headers=headers)
-            else:
+            if e.response.status_code not in [401, 403]:
                 raise e
+            _logger.info(
+                "Failed to authorize request, possibly due to credential expiration."
+                " Refreshing credentials and trying again..."
+            )
+            credential_info = self._get_write_credential_infos([artifact_file_path])[0]
+            put_block(credential_info.signed_uri, block_id, chunk, headers=headers)
         return block_id
 
     def _azure_upload_file(self, credentials, local_file, artifact_file_path):
@@ -273,17 +272,16 @@ class DatabricksArtifactRepository(CloudArtifactRepository):
             try:
                 put_block_list(credentials.signed_uri, uploading_block_list, headers=headers)
             except requests.HTTPError as e:
-                if e.response.status_code in [401, 403]:
-                    _logger.info(
-                        "Failed to authorize request, possibly due to credential expiration."
-                        " Refreshing credentials and trying again..."
-                    )
-                    credential_info = self._get_write_credential_infos([artifact_file_path])[0]
-                    put_block_list(
-                        credential_info.signed_uri, uploading_block_list, headers=headers
-                    )
-                else:
+                if e.response.status_code not in [401, 403]:
                     raise e
+                _logger.info(
+                    "Failed to authorize request, possibly due to credential expiration."
+                    " Refreshing credentials and trying again..."
+                )
+                credential_info = self._get_write_credential_infos([artifact_file_path])[0]
+                put_block_list(
+                    credential_info.signed_uri, uploading_block_list, headers=headers
+                )
         except Exception as err:
             raise MlflowException(err)
 
@@ -292,16 +290,15 @@ class DatabricksArtifactRepository(CloudArtifactRepository):
         try:
             func(**kwargs)
         except requests.HTTPError as e:
-            if e.response.status_code in [403]:
-                _logger.info(
-                    "Failed to authorize ADLS operation, possibly due "
-                    "to credential expiration. Refreshing credentials and trying again..."
-                )
-                new_credentials = self._get_write_credential_infos([artifact_file_path])[0]
-                kwargs["sas_url"] = new_credentials.signed_uri
-                func(**kwargs)
-            else:
+            if e.response.status_code not in [403]:
                 raise e
+            _logger.info(
+                "Failed to authorize ADLS operation, possibly due "
+                "to credential expiration. Refreshing credentials and trying again..."
+            )
+            new_credentials = self._get_write_credential_infos([artifact_file_path])[0]
+            kwargs["sas_url"] = new_credentials.signed_uri
+            func(**kwargs)
 
     def _azure_adls_gen2_upload_file(self, credentials, local_file, artifact_file_path):
         """

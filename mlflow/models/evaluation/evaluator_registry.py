@@ -25,9 +25,7 @@ class ModelEvaluatorRegistry:
                 self.register(entrypoint.name, entrypoint.load())
             except (AttributeError, ImportError) as exc:
                 warnings.warn(
-                    'Failure attempting to register model evaluator for scheme "{}": {}'.format(
-                        entrypoint.name, str(exc)
-                    ),
+                    f'Failure attempting to register model evaluator for scheme "{entrypoint.name}": {str(exc)}',
                     stacklevel=2,
                 )
 

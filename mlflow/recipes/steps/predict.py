@@ -179,7 +179,7 @@ class PredictStep(BaseStep):
         output_location = self.step_config["location"]
         output_populated = False
         if self.save_mode in ["default", "error", "errorifexists"]:
-            if output_format == "parquet" or output_format == "delta":
+            if output_format in ["parquet", "delta"]:
                 output_populated = os.path.exists(output_location)
             else:
                 try:

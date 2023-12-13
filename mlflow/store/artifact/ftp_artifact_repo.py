@@ -74,7 +74,7 @@ class FTPArtifactRepository(ArtifactRepository):
             self._mkdir(ftp, artifact_dir)
             with open(local_file, "rb") as f:
                 ftp.cwd(artifact_dir)
-                ftp.storbinary("STOR " + os.path.basename(local_file), f)
+                ftp.storbinary(f"STOR {os.path.basename(local_file)}", f)
 
     def log_artifacts(self, local_dir, artifact_path=None):
         dest_path = posixpath.join(self.path, artifact_path) if artifact_path else self.path
@@ -109,7 +109,7 @@ class FTPArtifactRepository(ArtifactRepository):
             # Make sure artifact_files is a list of file names because ftp.nlst
             # may return absolute paths.
             artifact_files = [os.path.basename(f) for f in artifact_files]
-            artifact_files = list(filter(lambda x: x != "." and x != "..", artifact_files))
+            artifact_files = list(filter(lambda x: x not in [".", ".."], artifact_files))
             infos = []
             for file_name in artifact_files:
                 file_path = file_name if path is None else posixpath.join(path, file_name)
@@ -127,7 +127,7 @@ class FTPArtifactRepository(ArtifactRepository):
         )
         with self.get_ftp_client() as ftp:
             with open(local_path, "wb") as f:
-                ftp.retrbinary("RETR " + remote_full_path, f.write)
+                ftp.retrbinary(f"RETR {remote_full_path}", f.write)
 
     def delete_artifacts(self, artifact_path=None):
         raise MlflowException("Not implemented yet")

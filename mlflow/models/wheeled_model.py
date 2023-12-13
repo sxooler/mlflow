@@ -254,4 +254,4 @@ class WheeledModel:
 
     @classmethod
     def get_wheel_artifact_path(cls, original_artifact_path):
-        return original_artifact_path + "_" + _WHEELS_FOLDER_NAME
+        return f"{original_artifact_path}_{_WHEELS_FOLDER_NAME}"

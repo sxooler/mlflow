@@ -97,12 +97,11 @@ class LocalBackend(AbstractBackend):
         # Select an appropriate env manager for the project env type
         if env_manager is None:
             env_manager = _env_type_to_env_manager(project.env_type)
-        else:
-            if project.env_type == env_type.PYTHON and env_manager == _EnvManager.CONDA:
-                raise MlflowException.invalid_parameter_value(
-                    "python_env project cannot be executed using conda. Set `--env-manager` to "
-                    "'virtualenv' or 'local' to execute this project."
-                )
+        elif project.env_type == env_type.PYTHON and env_manager == _EnvManager.CONDA:
+            raise MlflowException.invalid_parameter_value(
+                "python_env project cannot be executed using conda. Set `--env-manager` to "
+                "'virtualenv' or 'local' to execute this project."
+            )
 
         # If a docker_env attribute is defined in MLproject then it takes precedence over conda yaml
         # environments, so the project will be executed inside a docker container.
@@ -288,17 +287,10 @@ def _get_docker_command(image, active_run, docker_args=None, volumes=None, user_
         for name, value in docker_args.items():
             # Passed just the name as boolean flag
             if isinstance(value, bool) and value:
-                if len(name) == 1:
-                    cmd += ["-" + name]
-                else:
-                    cmd += ["--" + name]
+                cmd += [f"-{name}"] if len(name) == 1 else [f"--{name}"]
             else:
                 # Passed name=value
-                if len(name) == 1:
-                    cmd += ["-" + name, value]
-                else:
-                    cmd += ["--" + name, value]
-
+                cmd += [f"-{name}", value] if len(name) == 1 else [f"--{name}", value]
     env_vars = get_run_env_vars(
         run_id=active_run.info.run_id, experiment_id=active_run.info.experiment_id
     )
@@ -321,10 +313,7 @@ def _get_docker_command(image, active_run, docker_args=None, volumes=None, user_
                 system_var = os.environ.get(user_entry)
                 if system_var is None:
                     raise MlflowException(
-                        "This project expects the {} environment variables to "
-                        "be set on the machine running the project, but {} was "
-                        "not set. Please ensure all expected environment variables "
-                        "are set".format(", ".join(user_env_vars), user_entry)
+                        f'This project expects the {", ".join(user_env_vars)} environment variables to be set on the machine running the project, but {user_entry} was not set. Please ensure all expected environment variables are set'
                     )
                 env_vars[user_entry] = system_var
 
@@ -358,7 +347,7 @@ def _get_s3_artifact_cmd_and_envs(artifact_repo):
 
     volumes = []
     if posixpath.exists(aws_path):
-        volumes = ["-v", "{}:{}".format(str(aws_path), "/.aws")]
+        volumes = ["-v", f"{str(aws_path)}:/.aws"]
     envs = {
         "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY"),
         "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID"),

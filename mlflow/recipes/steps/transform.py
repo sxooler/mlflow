@@ -22,7 +22,7 @@ _USER_DEFINED_TRANSFORM_STEP_MODULE = "steps.transform"
 
 def _generate_feature_names(num_features):
     max_length = len(str(num_features))
-    return ["f_" + str(i).zfill(max_length) for i in range(num_features)]
+    return [f"f_{str(i).zfill(max_length)}" for i in range(num_features)]
 
 
 def _get_output_feature_names(transformer, num_features, input_features):

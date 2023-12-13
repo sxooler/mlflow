@@ -105,12 +105,11 @@ def upload_and_download(file_size, num_files):
 
         # Verify checksums
         with ThreadPoolExecutor() as pool:
-            futures = []
-            for f in dst_dir.rglob("*"):
-                if f.is_dir():
-                    continue
-                futures.append(pool.submit(assert_checksum_equal, f, files[f.name]))
-
+            futures = [
+                pool.submit(assert_checksum_equal, f, files[f.name])
+                for f in dst_dir.rglob("*")
+                if not f.is_dir()
+            ]
             for fut in tqdm(
                 as_completed(futures),
                 total=len(futures),

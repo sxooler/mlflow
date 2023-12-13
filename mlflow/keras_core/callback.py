@@ -99,5 +99,5 @@ class MLflowCallback(keras.callbacks.Callback):
         """Log validation metrics at validation end."""
         if logs is None:
             return
-        metrics = {"validation_" + k: v for k, v in logs.items()}
+        metrics = {f"validation_{k}": v for k, v in logs.items()}
         self.metrics_logger.record_metrics(metrics)

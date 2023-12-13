@@ -101,14 +101,15 @@ def _infer_model_type_by_labels(labels):
 
 def _extract_raw_model(model):
     model_loader_module = model.metadata.flavors["python_function"]["loader_module"]
-    if model_loader_module == "mlflow.sklearn" and not isinstance(model, _ServedPyFuncModel):
-        # If we load a sklearn model with mlflow.pyfunc.load_model, the model will be wrapped
-        # with _SklearnModelWrapper, we need to extract the raw model from it.
-        if isinstance(model._model_impl, _SklearnModelWrapper):
-            return model_loader_module, model._model_impl.sklearn_model
-        return model_loader_module, model._model_impl
-    else:
+    if model_loader_module != "mlflow.sklearn" or isinstance(
+        model, _ServedPyFuncModel
+    ):
         return model_loader_module, None
+    # If we load a sklearn model with mlflow.pyfunc.load_model, the model will be wrapped
+    # with _SklearnModelWrapper, we need to extract the raw model from it.
+    if isinstance(model._model_impl, _SklearnModelWrapper):
+        return model_loader_module, model._model_impl.sklearn_model
+    return model_loader_module, model._model_impl
 
 
 def _extract_predict_fn(model, raw_model):
@@ -1182,57 +1183,47 @@ class DefaultEvaluator(ModelEvaluator):
         if len(parameters) == 2:
             param_0_name, param_1_name = parameters.keys()
         if len(parameters) == 2 and param_0_name != "predictions" and param_1_name != "targets":
-            eval_fn_args.append(eval_df_copy)
-            eval_fn_args.append(copy.deepcopy(self.metrics))
-        # eval_fn can have parameters like (predictions, targets, metrics, random_col)
+            eval_fn_args.extend((eval_df_copy, copy.deepcopy(self.metrics)))
         else:
             for param_name, param in parameters.items():
                 column = self.col_mapping.get(param_name, param_name)
 
-                if (
-                    column == "predictions"
-                    or column == self.predictions
-                    or column == self.dataset.predictions_name
-                ):
+                if column in [
+                    "predictions",
+                    self.predictions,
+                    self.dataset.predictions_name,
+                ]:
                     eval_fn_args.append(eval_df_copy["prediction"])
-                elif column == "targets" or column == self.dataset.targets_name:
+                elif column in ["targets", self.dataset.targets_name]:
                     if "target" in eval_df_copy:
                         eval_fn_args.append(eval_df_copy["target"])
-                    else:
-                        if param.default == inspect.Parameter.empty:
-                            params_not_found.append(param_name)
-                        else:
-                            eval_fn_args.append(param.default)
-                elif column == "metrics":
-                    eval_fn_args.append(copy.deepcopy(self.metrics_values))
-                else:
-                    # case when column passed in col_mapping contains the entire column
-                    if not isinstance(column, str):
-                        eval_fn_args.append(column)
-
-                    # case column in col_mapping is string and the column value
-                    # is part of the input_df
-                    elif column in input_df.columns:
-                        eval_fn_args.append(input_df[column])
-
-                    # case column in col_mapping is string and the column value
-                    # is part of the output_df(other than predictions)
-                    elif (
-                        self.other_output_columns is not None
-                        and column in self.other_output_columns.columns
-                    ):
-                        self.other_output_columns_for_eval.add(column)
-                        eval_fn_args.append(self.other_output_columns[column])
-
-                    # case where the param is defined as part of the evaluator_config
-                    elif column in self.evaluator_config:
-                        eval_fn_args.append(self.evaluator_config.get(column))
                     elif param.default == inspect.Parameter.empty:
                         params_not_found.append(param_name)
                     else:
                         eval_fn_args.append(param.default)
+                elif column == "metrics":
+                    eval_fn_args.append(copy.deepcopy(self.metrics_values))
+                elif not isinstance(column, str):
+                    eval_fn_args.append(column)
 
-        if len(params_not_found) > 0:
+                elif column in input_df.columns:
+                    eval_fn_args.append(input_df[column])
+
+                elif (
+                    self.other_output_columns is not None
+                    and column in self.other_output_columns.columns
+                ):
+                    self.other_output_columns_for_eval.add(column)
+                    eval_fn_args.append(self.other_output_columns[column])
+
+                elif column in self.evaluator_config:
+                    eval_fn_args.append(self.evaluator_config.get(column))
+                elif param.default == inspect.Parameter.empty:
+                    params_not_found.append(param_name)
+                else:
+                    eval_fn_args.append(param.default)
+
+        if params_not_found:
             return extra_metric.name, params_not_found
         return eval_fn_args
 
@@ -1245,8 +1236,9 @@ class DefaultEvaluator(ModelEvaluator):
                 index=index,
                 name=extra_metric.name,
             )
-            metric_value = _evaluate_extra_metric(extra_metric_tuple, eval_fn_args)
-            if metric_value:
+            if metric_value := _evaluate_extra_metric(
+                extra_metric_tuple, eval_fn_args
+            ):
                 name = (
                     f"{extra_metric.name}/{extra_metric.version}"
                     if extra_metric.version
@@ -1267,12 +1259,11 @@ class DefaultEvaluator(ModelEvaluator):
                     name=getattr(custom_artifact, "__name__", repr(custom_artifact)),
                     artifacts_dir=artifacts_dir,
                 )
-                artifact_results = _evaluate_custom_artifacts(
+                if artifact_results := _evaluate_custom_artifacts(
                     custom_artifact_tuple,
                     eval_df.copy(),
                     copy.deepcopy(self.metrics_values),
-                )
-                if artifact_results:
+                ):
                     for artifact_name, raw_artifact in artifact_results.items():
                         self.artifacts[artifact_name] = self._log_custom_metric_artifact(
                             artifact_name,
@@ -1475,7 +1466,7 @@ class DefaultEvaluator(ModelEvaluator):
             if isinstance(result, tuple):
                 failed_metrics.append(result)
 
-        if len(failed_metrics) > 0:
+        if failed_metrics:
             output_columns = (
                 [] if self.other_output_columns is None else list(self.other_output_columns.columns)
             )
@@ -1518,10 +1509,7 @@ class DefaultEvaluator(ModelEvaluator):
         for metric in self.builtin_metrics:
             try:
                 eval_fn_args = self._get_args_for_metrics(metric, first_row_df)
-                metric_value = metric.eval_fn(*eval_fn_args)
-
-                # need to update metrics because they might be used in calculating extra_metrics
-                if metric_value:
+                if metric_value := metric.eval_fn(*eval_fn_args):
                     name = f"{metric.name}/{metric.version}" if metric.version else metric.name
                     self.metrics_values.update({name: metric_value})
             except Exception as e:
@@ -1546,7 +1534,7 @@ class DefaultEvaluator(ModelEvaluator):
                 else:
                     exceptions.append(f"Metric '{metric.name}': Error:\n{e!r}\n{stacktrace_str}")
 
-        if len(exceptions) > 0:
+        if exceptions:
             raise MlflowException("\n".join(exceptions))
 
     def _evaluate_metrics(self, eval_df):
@@ -1563,9 +1551,7 @@ class DefaultEvaluator(ModelEvaluator):
             _logger.info(f"Evaluating builtin metrics: {builtin_metric.name}")
 
             eval_fn_args = self._get_args_for_metrics(builtin_metric, eval_df)
-            metric_value = builtin_metric.eval_fn(*eval_fn_args)
-
-            if metric_value:
+            if metric_value := builtin_metric.eval_fn(*eval_fn_args):
                 name = (
                     f"{builtin_metric.name}/{builtin_metric.version}"
                     if builtin_metric.version
@@ -1805,11 +1791,11 @@ class DefaultEvaluator(ModelEvaluator):
         if self.extra_metrics is None:
             self.extra_metrics = []
 
-        bad_metrics = []
-        for metric in self.extra_metrics:
-            if not isinstance(metric, EvaluationMetric):
-                bad_metrics.append(metric)
-        if len(bad_metrics) > 0:
+        if bad_metrics := [
+            metric
+            for metric in self.extra_metrics
+            if not isinstance(metric, EvaluationMetric)
+        ]:
             message = "\n".join(
                 [f"- Metric '{m}' has type '{type(m).__name__}'" for m in bad_metrics]
             )

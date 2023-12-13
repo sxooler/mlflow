@@ -111,7 +111,7 @@ class GCSArtifactRepository(ArtifactRepository, MultipartUploadMixin):
         dest_path = artifact_path
         if path:
             dest_path = posixpath.join(dest_path, path)
-        prefix = dest_path if dest_path.endswith("/") else dest_path + "/"
+        prefix = dest_path if dest_path.endswith("/") else f"{dest_path}/"
 
         bkt = self._get_bucket(bucket)
 
